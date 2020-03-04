@@ -155,7 +155,7 @@ void setMaximumDemand(int customerIndex, int *maximumDemand)
 	for (int i = 0; i < numberOfResources; i++)
 	{
 		maximum[customerIndex][i] = maximumDemand[i];
-		need[customerIndex][i] = maximumDemand[i];
+		need[customerIndex][i] = maximum[customerIndex][i] - allocation[customerIndex][i];
 	}
 }
 
@@ -188,18 +188,27 @@ int checkSafe(int customerIndex, int *request)
 
 	for (int i = 0; i < numberOfResources; i++)
 	{
-		// tempNeed = need - request;
-		tempNeed[customerIndex][i] = need[customerIndex][i] - request[i];
-		if (tempNeed[customerIndex][i] < 0)
+		for (int j = 0; j < numberOfCustomers; j++)
 		{
-			return 0;
+			if (j == customerIndex)
+			{
+				// tempNeed = need - request;
+				tempNeed[customerIndex][i] = need[customerIndex][i] - request[i];
+				tempAllocation[customerIndex][i] = allocation[customerIndex][i] + request[i];
+				if (tempNeed[customerIndex][i] < 0)
+				{
+					return 0;
+				}
+			}
+			else
+			{
+				tempNeed[j][i] = need[j][i];
+				tempAllocation[j][i] = allocation[j][i];
+			}
 		}
 	}
-	for (int i = 0; i < numberOfResources; i++)
-	{
-		// tempAllocation = allocation;
-		tempAllocation[customerIndex][i] = allocation[customerIndex][i] + request[i];
-	}
+
+	// printf("testCheckSafe\n");
 	// TODO: check if the new state is safe
 	int *customerFinish = mallocIntVector(numberOfCustomers);
 	for (int i = 0; i < numberOfCustomers; i++)
@@ -220,6 +229,8 @@ int checkSafe(int customerIndex, int *request)
 					if (tempNeed[j][i] > work[i])
 					{
 						checker = 0;
+						// printf("%d %d\n", j, i);
+						break;
 					}
 				}
 
@@ -232,6 +243,7 @@ int checkSafe(int customerIndex, int *request)
 					}
 					customerFinish[j] = 1;
 				}
+
 			}
 		}
 	}
@@ -247,6 +259,7 @@ int checkSafe(int customerIndex, int *request)
 			return 0;
 		}
 	}
+
 	freeIntVector(customerFinish);
 
 	return 1;
@@ -292,6 +305,7 @@ int requestResources(int customerIndex, int *request)
 	// TODO: request is granted, update state
 	if (safeOrNot == 1)
 	{
+		// printf("request success!\n");
 		for (int i = 0; i < numberOfResources; i++)
 		{
 			// work = available - request;
@@ -339,21 +353,24 @@ void releaseResources(int customerIndex, int *release)
 	}
 }
 
-
 /**
  * Parses and runs the file simulating a series of resource request and releases.
  * Provided for your convenience.
  * @param filename  The name of the file.
  */
-void runFile(const char * filename) {
+void runFile(const char *filename)
+{
 	FILE *fp = fopen(filename, "r");
 	int c = 0, i = 0, j = 0, m = 0, n = 0, bankInited = 0,
-	lineLen = 0, prevLineEnd = 0, maxLineLen = 0;
-	do {
-		if (c == '\n' || c == EOF) {
+		lineLen = 0, prevLineEnd = 0, maxLineLen = 0;
+	do
+	{
+		if (c == '\n' || c == EOF)
+		{
 			lineLen = i - prevLineEnd;
 			prevLineEnd = i;
-			if (lineLen > maxLineLen) maxLineLen = lineLen;
+			if (lineLen > maxLineLen)
+				maxLineLen = lineLen;
 		}
 		i++;
 	} while ((c = fgetc(fp)) != EOF);
@@ -362,64 +379,85 @@ void runFile(const char * filename) {
 	lineLen++;
 	char *line = malloc(lineLen), *token;
 	i = 0;
-	while (fgets(line, lineLen, fp) != NULL) {
-		for (j = 0; j < lineLen-1; j++) 
-			if (line[j] == '\n') line[j] = '\0';
-		if (i == 0) {
+	while (fgets(line, lineLen, fp) != NULL)
+	{
+		for (j = 0; j < lineLen - 1; j++)
+			if (line[j] == '\n')
+				line[j] = '\0';
+		if (i == 0)
+		{
 			token = strtok(line, ",");
 			token = strtok(NULL, ",");
 			n = atoi(token);
-		} else if (i == 1) {
+		}
+		else if (i == 1)
+		{
 			token = strtok(line, ",");
 			token = strtok(NULL, ",");
 			m = atoi(token);
-		} else if (i == 2) {
+		}
+		else if (i == 2)
+		{
 			token = strtok(line, ",");
 			token = strtok(NULL, ",");
 			int *resources = malloc(sizeof(int) * m);
-			for (j = 0; j < m; j++) {
+			for (j = 0; j < m; j++)
+			{
 				resources[j] = atoi(strtok(j == 0 ? token : NULL, " "));
 			}
 			initBank(resources, m, n);
 			bankInited = 1;
 			free(resources);
-		} else {
+		}
+		else
+		{
 			int *resources = malloc(sizeof(int) * m);
 			token = strtok(line, ",");
-			if (strcmp(token, "c") == 0) {
-				int customerIndex = atoi(strtok(NULL, ","));	
+			if (strcmp(token, "c") == 0)
+			{
+				int customerIndex = atoi(strtok(NULL, ","));
 				int *resources = malloc(sizeof(int) * m);
 				token = strtok(NULL, ",");
-				for (j = 0; j < m; j++) {
+				for (j = 0; j < m; j++)
+				{
 					resources[j] = atoi(strtok(j == 0 ? token : NULL, " "));
 				}
 				setMaximumDemand(customerIndex, resources);
 				free(resources);
-			} else if (strcmp(token, "r") == 0) {
-				int customerIndex = atoi(strtok(NULL, ","));	
+			}
+			else if (strcmp(token, "r") == 0)
+			{
+				int customerIndex = atoi(strtok(NULL, ","));
 				int *resources = malloc(sizeof(int) * m);
 				token = strtok(NULL, ",");
-				for (j = 0; j < m; j++) {
+				for (j = 0; j < m; j++)
+				{
 					resources[j] = atoi(strtok(j == 0 ? token : NULL, " "));
 				}
 				requestResources(customerIndex, resources);
 				free(resources);
-			} else if (strcmp(token, "f") == 0) {
-				int customerIndex = atoi(strtok(NULL, ","));	
+			}
+			else if (strcmp(token, "f") == 0)
+			{
+				int customerIndex = atoi(strtok(NULL, ","));
 				int *resources = malloc(sizeof(int) * m);
 				token = strtok(NULL, ",");
-				for (j = 0; j < m; j++) {
+				for (j = 0; j < m; j++)
+				{
 					resources[j] = atoi(strtok(j == 0 ? token : NULL, " "));
 				}
 				releaseResources(customerIndex, resources);
 				free(resources);
-			} else if (strcmp(token, "p") == 0) {
+			}
+			else if (strcmp(token, "p") == 0)
+			{
 				printState();
 			}
 		}
 		i++;
 	}
-	if (bankInited) freeBank();
+	if (bankInited)
+		freeBank();
 	free(line);
 	fclose(fp);
 }
@@ -428,11 +466,11 @@ void runFile(const char * filename) {
  * Main function
  * @param args  The command line arguments
  */
-int main (int argc, const char ** argv) 
-{	
-	if (argc > 1) {
-		runFile(argv[1]);	
+int main(int argc, const char **argv)
+{
+	if (argc > 1)
+	{
+		runFile(argv[1]);
 	}
 	return 0;
 }
-
